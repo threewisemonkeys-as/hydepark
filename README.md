@@ -34,7 +34,9 @@ the transition instead of jumping into place afterwards.
 - `main.swift` top: change the hotkey (`hotKeyCode`, `hotKeyModifiers`),
   the tracking rate (`refreshInterval`) add margin around the cutout (`holePadding`) or adjust the cutout's
   corner rounding (`holeCornerRadius`, default 16 to match macOS windows), or the fade used when an
-  overlay first appears (`revealFadeDuration`).
+  overlay first appears (`revealFadeDuration`). Popups an app draws inside its own window (Chrome's tab
+  hover cards, omnibox suggestions, tooltips) are ignored so the cutout stays on the window; `popupCoverage`
+  is how far inside the parent window a window must be to count as a popup.
 
 ---
 

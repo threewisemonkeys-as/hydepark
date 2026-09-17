@@ -9,6 +9,7 @@ let hotKeyModifiers: UInt32 = UInt32(controlKey | optionKey | cmdKey)
 let refreshInterval: TimeInterval = 0.12   // how often the cutout re-tracks the active window
 let holePadding: CGFloat = 0               // extra transparent margin around the window
 let holeCornerRadius: CGFloat = 16         // matches standard macOS window corners
+let popupCoverage: CGFloat = 0.85          // a same-app window this much inside a larger one behind it is a popup, not a target
 let revealFadeDuration: TimeInterval = 0.15 // fade-in when an overlay is first shown (toggle on / first visit to a Space)
 
 #if DEBUG_LOG
@@ -312,16 +313,33 @@ final class HydePark: NSObject, NSApplicationDelegate {
         guard let app = NSWorkspace.shared.frontmostApplication else { return nil }
         let pid = app.processIdentifier
         guard pid != ProcessInfo.processInfo.processIdentifier else { return nil }
-        // List is ordered front-to-back; first layer-0 window of the app is the active one.
-        for info in list {
+        // List is ordered front-to-back; layer-0 windows of the app, frontmost first.
+        let candidates: [CGRect] = list.compactMap { info in
             guard (info[kCGWindowOwnerPID as String] as? pid_t) == pid,
                   (info[kCGWindowLayer as String] as? Int) == 0,
                   let r = Self.bounds(of: info),
                   r.width > 50, r.height > 50 // skip tiny helper windows
-            else { continue }
+            else { return nil }
             return r
         }
+        // Transient popups (Chrome's tab hover cards, omnibox suggestions, tooltips, autocomplete lists)
+        // are plain layer-0 windows drawn in front of the window that spawned them, so they would win
+        // the "frontmost" test. They sit inside their parent's bounds, so skip any window that a larger
+        // window of the same app behind it (almost) entirely covers, and keep the cutout on the parent.
+        for (i, r) in candidates.enumerated() {
+            let isPopup = candidates[(i + 1)...].contains { parent in
+                parent.width * parent.height > r.width * r.height && Self.coverage(of: r, by: parent) >= popupCoverage
+            }
+            if !isPopup { return r }
+        }
         return nil
+    }
+
+    /// Fraction of `r`'s area that lies inside `other` (0 = disjoint, 1 = fully contained).
+    private static func coverage(of r: CGRect, by other: CGRect) -> CGFloat {
+        let inter = r.intersection(other)
+        guard !inter.isNull, r.width > 0, r.height > 0 else { return 0 }
+        return (inter.width * inter.height) / (r.width * r.height)
     }
 
     /// Where the window server currently draws one of our overlays. During a Space slide this moves
