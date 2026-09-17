@@ -35,3 +35,7 @@ the transition instead of jumping into place afterwards.
   the tracking rate (`refreshInterval`) add margin around the cutout (`holePadding`) or adjust the cutout's
   corner rounding (`holeCornerRadius`, default 16 to match macOS windows), or the fade used when an
   overlay first appears (`revealFadeDuration`).
+
+---
+
+Note: This app was built completely using Claude Opus 5 in Claude Code.
